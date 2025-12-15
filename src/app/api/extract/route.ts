@@ -1,152 +1,221 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as cheerio from "cheerio";
 import { NextResponse } from "next/server";
+import { createErrorResponse, logApi, logApiError } from "@/lib/api-helpers";
+import { DEFAULT_USER_AGENT, POLLINATIONS_BASE_URL } from "@/lib/constants";
+import type { Recipe } from "@/types/recipe";
 
-export async function POST(req: Request) {
+const LOG_PREFIX = "Extract";
+
+/**
+ * System prompt for Gemini to extract recipe data as JSON-LD.
+ */
+const EXTRACTION_PROMPT = `
+You are a recipe extraction machine. 
+Extract the recipe from the provided content.
+Output strictly valid JSON-LD format adhering to schema.org/Recipe.
+
+RULES:
+1. Convert all units to valid Metric System (grams, ml, Celsius).
+2. If missing, infer reasonable values or omit.
+3. For images, describe the dish as the description.
+4. Output ONLY the raw JSON string. Do not use markdown blocks (\`\`\`json).
+5. If the input is NOT a recipe, return { "error": "Not a recipe" }.
+`;
+
+/**
+ * Fetches and cleans HTML content from a URL.
+ * 
+ * @param url - URL to fetch
+ * @returns Cleaned text content from the page body
+ */
+async function fetchUrlContent(url: string): Promise<string> {
+    const response = await fetch(url, {
+        headers: { 'User-Agent': DEFAULT_USER_AGENT }
+    });
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    // Remove non-content elements
+    $('script').remove();
+    $('style').remove();
+    $('nav').remove();
+    $('footer').remove();
+
+    // Extract and clean body text
+    return $('body').text().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Cleans Gemini response text to extract valid JSON.
+ * Handles common issues like markdown code blocks and extra text.
+ * 
+ * @param text - Raw response text from Gemini
+ * @returns Cleaned JSON string
+ */
+function cleanJsonResponse(text: string): string {
+    return text
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .replace(/^[\s\S]*?\{/, '{') // Find first {
+        .replace(/\}[^}]*$/, '}')    // Find last }
+        .trim();
+}
+
+/**
+ * Normalizes the image field from various formats to a single URL string.
+ * Handles arrays, ImageObjects, and validates the URL is accessible.
+ * 
+ * @param image - Raw image value from recipe data
+ * @returns Normalized image URL or null
+ */
+async function normalizeImage(image: unknown): Promise<string | null> {
+    if (!image) return null;
+
+    let imageUrl: string | null = null;
+
+    if (typeof image === 'string') {
+        imageUrl = image;
+    } else if (Array.isArray(image)) {
+        const first = image[0];
+        if (typeof first === 'string') {
+            imageUrl = first;
+        } else if (typeof first === 'object' && first?.url) {
+            imageUrl = first.url;
+        }
+    } else if (typeof image === 'object' && (image as { url?: string }).url) {
+        imageUrl = (image as { url: string }).url;
+    }
+
+    // Validate it looks like a URL and is reachable
+    if (imageUrl && imageUrl.startsWith('http')) {
+        try {
+            const check = await fetch(imageUrl, {
+                method: 'HEAD',
+                signal: AbortSignal.timeout(2000)
+            });
+            if (check.ok) return imageUrl;
+        } catch {
+            // Image not accessible
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Generates a fallback image URL using Pollinations.ai.
+ * 
+ * @param recipe - Recipe data to generate prompt from
+ * @returns Pollinations.ai image URL
+ */
+function generateFallbackImageUrl(recipe: Recipe): string {
+    const ingredients = Array.isArray(recipe.recipeIngredient)
+        ? recipe.recipeIngredient.slice(0, 3).join(", ")
+        : "";
+
+    const prompt = encodeURIComponent(
+        `Professional food photography of ${recipe.name || 'delicious food'}, ${ingredients}, high quality, lush lighting`
+    );
+
+    return `${POLLINATIONS_BASE_URL}/${prompt}?model=flux&width=1024&height=1024`;
+}
+
+/**
+ * POST /api/extract
+ * 
+ * Extracts recipe data from various input types using Gemini AI.
+ * Supports URL scraping, text content, and image uploads.
+ */
+export async function POST(req: Request): Promise<NextResponse> {
     try {
         const apiKey = req.headers.get("x-gemini-api-key");
         if (!apiKey) {
-            return NextResponse.json({ error: "Missing Gemini API Key" }, { status: 401 });
+            return createErrorResponse("Missing Gemini API Key", 401);
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
         const contentType = req.headers.get("content-type");
-        let promptParts: any[] = [];
+        let promptParts: (string | { inlineData: { data: string; mimeType: string } })[] = [];
         let sourceUrl = "";
 
+        // Handle multipart form data (image uploads)
         if (contentType?.includes("multipart/form-data")) {
             const formData = await req.formData();
             const file = formData.get("file") as File;
-            if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
+
+            if (!file) {
+                return createErrorResponse("No file provided", 400);
+            }
 
             const bytes = await file.arrayBuffer();
             const base64Data = Buffer.from(bytes).toString("base64");
 
-            promptParts = [
-                {
-                    inlineData: {
-                        data: base64Data,
-                        mimeType: file.type,
-                    },
+            promptParts = [{
+                inlineData: {
+                    data: base64Data,
+                    mimeType: file.type,
                 },
-            ];
+            }];
         } else {
+            // Handle JSON body (URL or text content)
             const body = await req.json();
             const { content, type } = body;
 
             let textToAnalyze = content;
+
             if (type === 'url') {
                 sourceUrl = content;
                 try {
-                    const response = await fetch(content, {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                        }
-                    });
-                    const html = await response.text();
-                    const $ = cheerio.load(html);
-                    $('script').remove();
-                    $('style').remove();
-                    $('nav').remove();
-                    $('footer').remove();
-                    textToAnalyze = $('body').text().replace(/\s+/g, ' ').trim(); // Basic clean
-                } catch (e) {
-                    return NextResponse.json({ error: "Failed to fetch URL" }, { status: 400 });
+                    textToAnalyze = await fetchUrlContent(content);
+                } catch {
+                    return createErrorResponse("Failed to fetch URL", 400);
                 }
             }
+
             promptParts = [textToAnalyze];
         }
 
-        const systemPrompt = `
-      You are a recipe extraction machine. 
-      Extract the recipe from the provided content.
-      Output strictly valid JSON-LD format adhering to schema.org/Recipe.
-      
-      RULES:
-      1. Convert all units to valid Metric System (grams, ml, Celsius).
-      2. If missing, infer resonable values or omit.
-      3. For images, describe the dish as the description.
-      4. Output ONLY the raw JSON string. Do not use markdown blocks (\`\`\`json).
-      5. If the input is NOT a recipe, return { "error": "Not a recipe" }.
-    `;
-
-        // We pass system prompt as the first text part effectively or use systemInstruction if available 
-        // but mixing text and images + system prompt in 'generateContent' argument list is standard for simple use.
-        // Better to use systemInstruction from model config if supported, but simple prompt prepending works reliably.
-
-        const result = await model.generateContent([systemPrompt, ...promptParts]);
+        // Call Gemini for extraction
+        const result = await model.generateContent([EXTRACTION_PROMPT, ...promptParts]);
         const response = await result.response;
         const text = response.text();
 
-        // specific cleanup for Gemini 2.5 Flash which can be chatty
-        const cleanJson = text
-            .replace(/```json/g, '')
-            .replace(/```/g, '')
-            .replace(/^[\s\S]*?\{/, '{') // Find first {
-            .replace(/\}[^}]*$/, '}')    // Find last }
-            .trim();
+        // Parse and normalize the response
+        const cleanJson = cleanJsonResponse(text);
 
         try {
-            const json = JSON.parse(cleanJson);
-            // Inject source URL if we have it
-            if (sourceUrl && !json.url) {
-                json.url = sourceUrl;
+            const recipe: Recipe = JSON.parse(cleanJson);
+
+            // Inject source URL if available
+            if (sourceUrl && !recipe.url) {
+                recipe.url = sourceUrl;
             }
 
-            // Normalize Image
-            if (json.image) {
-                if (typeof json.image === 'string') {
-                    // Already a string, good.
-                } else if (Array.isArray(json.image)) {
-                    // Take first image
-                    const first = json.image[0];
-                    if (typeof first === 'string') json.image = first;
-                    else if (typeof first === 'object' && first.url) json.image = first.url;
-                    else json.image = null;
-                } else if (typeof json.image === 'object') {
-                    // Schema.org ImageObject
-                    if (json.image.url) json.image = json.image.url;
-                    else json.image = null;
-                }
+            // Normalize image field
+            recipe.image = await normalizeImage(recipe.image);
 
-                // Validate it looks like a URL
-                if (typeof json.image === 'string') {
-                    if (!json.image.startsWith('http')) {
-                         json.image = null;
-                    } else {
-                        // Check if the URL is actually reachable
-                        try {
-                            const check = await fetch(json.image, { 
-                                method: 'HEAD',
-                                signal: AbortSignal.timeout(2000) // 2s timeout
-                            });
-                            if (!check.ok) json.image = null;
-                        } catch (e) {
-                            json.image = null;
-                        }
-                    }
-                }
+            // Generate fallback image if needed
+            if (!recipe.image) {
+                recipe.image = generateFallbackImageUrl(recipe);
             }
 
-            // Pollinations.ai Fallback
-            if (!json.image || (typeof json.image === 'string' && json.image.length === 0)) {
-                const ingredients = Array.isArray(json.recipeIngredient) ? json.recipeIngredient.slice(0, 3).join(", ") : "";
-                const prompt = encodeURIComponent(`Professional food photography of ${json.name || 'delicious food'}, ${ingredients}, high quality, lush lighting`);
-                json.image = `https://pollinations.ai/p/${prompt}?model=flux&width=1024&height=1024`;
-            }
-            return NextResponse.json(json);
-        } catch (e) {
-            console.error("JSON Parse Error", text);
-            return NextResponse.json({ error: "Failed to parse API response", raw: text }, { status: 500 });
+            logApi(LOG_PREFIX, `Extracted recipe: ${recipe.name}`);
+            return NextResponse.json(recipe);
+        } catch {
+            logApiError(LOG_PREFIX, "JSON Parse Error", text);
+            return createErrorResponse("Failed to parse API response", 500, text);
         }
 
     } catch (error) {
-        console.error("Gemini Extraction Error:", error);
-        return NextResponse.json({
-            error: "Extraction failed",
-            details: error instanceof Error ? error.message : String(error)
-        }, { status: 500 });
+        logApiError(LOG_PREFIX, "Extraction Error", error);
+        return createErrorResponse(
+            "Extraction failed",
+            500,
+            error instanceof Error ? error.message : String(error)
+        );
     }
 }
