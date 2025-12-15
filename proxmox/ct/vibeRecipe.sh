@@ -9,7 +9,7 @@
 # Configuration
 # =============================================================================
 # IMPORTANT: Update this URL to point to your repository
-REPO_RAW="https://raw.githubusercontent.com/YOURUSER/viberecipe/refs/heads/main"
+REPO_RAW="https://raw.githubusercontent.com/ClemensSchartmueller/viberecipe/refs/heads/main"
 
 # Application Settings
 APP="VibeRecipe"
@@ -64,8 +64,24 @@ if ! command -v pveversion &>/dev/null; then
   exit 1
 fi
 
-# Check Proxmox version
-PVE_VERSION=$(pveversion | head -n1 | sed 's/.*pve-manager\///' | cut -d'/' -f1)
+# Check Proxmox version (with fallback methods)
+PVE_VERSION=""
+
+# Method 1: Try pveversion
+if command -v pveversion &>/dev/null; then
+  PVE_VERSION=$(pveversion 2>/dev/null | head -n1 | sed 's/.*pve-manager\///' | cut -d'/' -f1)
+fi
+
+# Method 2: Fallback to dpkg
+if [[ -z "$PVE_VERSION" ]]; then
+  PVE_VERSION=$(dpkg -l pve-manager 2>/dev/null | grep pve-manager | awk '{print $3}' | cut -d'-' -f1)
+fi
+
+# Method 3: Fallback to /etc/pve/.version
+if [[ -z "$PVE_VERSION" ]] && [[ -f /etc/pve/.version ]]; then
+  PVE_VERSION=$(cat /etc/pve/.version)
+fi
+
 PVE_MAJOR="${PVE_VERSION%%.*}"
 if [[ -z "$PVE_MAJOR" ]] || [[ "$PVE_MAJOR" -lt 8 ]]; then
   echo -e "${CROSS}${RD} Proxmox VE 8.0 or higher is required. Detected: ${PVE_VERSION:-unknown}${CL}"
