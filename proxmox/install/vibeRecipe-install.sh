@@ -63,6 +63,12 @@ msg_info "Building VibeRecipe for production"
 npm run build >/dev/null 2>&1
 msg_ok "Built VibeRecipe"
 
+# Copy static assets for standalone deployment (Next.js requirement)
+msg_info "Copying static assets"
+cp -r "${APP_DIR}/public" "${APP_DIR}/.next/standalone/"
+cp -r "${APP_DIR}/.next/static" "${APP_DIR}/.next/standalone/.next/"
+msg_ok "Copied static assets"
+
 # Get version from package.json
 VIBERECIPE_VERSION=$(node -p "require('${APP_DIR}/package.json').version" 2>/dev/null || echo "1.0.0")
 echo "${VIBERECIPE_VERSION}" > "${APP_DIR}/.version"
