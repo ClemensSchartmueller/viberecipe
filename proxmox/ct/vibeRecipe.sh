@@ -65,9 +65,10 @@ if ! command -v pveversion &>/dev/null; then
 fi
 
 # Check Proxmox version
-PVE_VERSION=$(pveversion | grep -oP 'pve-manager/\K[0-9]+\.[0-9]+')
-if [[ "${PVE_VERSION%%.*}" -lt 8 ]]; then
-  echo -e "${CROSS}${RD} Proxmox VE 8.0 or higher is required.${CL}"
+PVE_VERSION=$(pveversion | head -n1 | sed 's/.*pve-manager\///' | cut -d'/' -f1)
+PVE_MAJOR="${PVE_VERSION%%.*}"
+if [[ -z "$PVE_MAJOR" ]] || [[ "$PVE_MAJOR" -lt 8 ]]; then
+  echo -e "${CROSS}${RD} Proxmox VE 8.0 or higher is required. Detected: ${PVE_VERSION:-unknown}${CL}"
   exit 1
 fi
 
