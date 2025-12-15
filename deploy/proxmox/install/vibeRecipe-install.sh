@@ -27,7 +27,7 @@ echo "Bootstrap complete."
 if [[ -f "/tmp/install.func" ]]; then
   source /tmp/install.func
 else
-  source <(curl -fsSL "${REPO_RAW}/proxmox/misc/install.func")
+  source <(curl -fsSL "${REPO_RAW}/deploy/proxmox/misc/install.func")
 fi
 
 # =============================================================================

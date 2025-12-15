@@ -4,8 +4,6 @@
 
 VibeRecipe is a modern, AI-powered recipe extractor built with **Next.js**. It takes unstructured recipe content—whether it's a messy URL, a block of text, or a photo of a cookbook page—and converts it into a clean, structured format using **Google Gemini**. It also supports direct integration with **Tandoor**, allowing you to import extracted recipes directly into your self-hosted cookbook.
 
-![VibeRecipe Magic Paste Input](/assets/screenshot-main.png)
-
 ## Features
 
 - **Magic Paste Input**:
@@ -84,13 +82,14 @@ VibeRecipe uses **localStorage** to manage your configuration securely in your b
 Build and run using Docker:
 
 ```bash
+cd deploy
 docker compose up -d
 ```
 
 Or build manually:
 
 ```bash
-docker build -t vibeRecipe .
+docker build -f deploy/Dockerfile -t vibeRecipe .
 docker run -p 3000:3000 vibeRecipe
 ```
 
@@ -99,10 +98,10 @@ docker run -p 3000:3000 vibeRecipe
 One-command installation for Proxmox VE users (requires Proxmox VE 8.0+):
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/YOURUSER/viberecipe/refs/heads/main/proxmox/ct/vibeRecipe.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ClemensSchartmueller/viberecipe/refs/heads/main/deploy/proxmox/ct/vibeRecipe.sh)"
 ```
 
-> **Note:** Replace `YOURUSER` with the actual GitHub username/organization before using.
+> **Note:** Replace `ClemensSchartmueller` with the actual GitHub username/organization before using. If a fork is used, this also needs to be adapted in `deploy/proxmox/ct/vibeRecipe.sh` and `deploy/proxmox/install/vibeRecipe-install.sh`
 
 This creates a lightweight Debian 12 LXC container with VibeRecipe pre-installed and configured with nginx.
 

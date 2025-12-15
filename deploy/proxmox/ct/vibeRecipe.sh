@@ -275,7 +275,7 @@ fi
 msg_ok "Started container"
 
 msg_info "Running installation script (this may take several minutes)"
-pct exec "${CT_ID}" -- bash -c "$(curl -fsSL ${REPO_RAW}/proxmox/install/vibeRecipe-install.sh)"
+pct exec "${CT_ID}" -- bash -c "$(curl -fsSL ${REPO_RAW}/deploy/proxmox/install/vibeRecipe-install.sh)"
 
 # =============================================================================
 # Complete
