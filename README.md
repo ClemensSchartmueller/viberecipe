@@ -97,7 +97,7 @@ docker run -p 3000:3000 vibeRecipe
 One-command installation for Proxmox VE users (requires Proxmox VE 8.0+):
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/YOURUSER/recipeextractor/main/proxmox/ct/vibeRecipe.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/YOURUSER/viberecipe/refs/heads/main/proxmox/ct/vibeRecipe.sh)"
 ```
 
 > **Note:** Replace `YOURUSER` with the actual GitHub username/organization before using.

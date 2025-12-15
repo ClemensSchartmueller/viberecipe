@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # VibeRecipe LXC Container Script
-# Run from Proxmox shell: bash -c "$(curl -fsSL https://raw.githubusercontent.com/YOURUSER/recipeextractor/main/proxmox/ct/vibeRecipe.sh)"
+# Run from Proxmox shell: bash -c "$(curl -fsSL https://raw.githubusercontent.com/YOURUSER/viberecipe/refs/heads/main/proxmox/ct/vibeRecipe.sh)"
 # Copyright (c) 2024
 # License: MIT
 
@@ -9,7 +9,7 @@
 # Configuration
 # =============================================================================
 # IMPORTANT: Update this URL to point to your repository
-REPO_RAW="https://raw.githubusercontent.com/YOURUSER/recipeextractor/main"
+REPO_RAW="https://raw.githubusercontent.com/YOURUSER/viberecipe/refs/heads/main"
 
 # Application Settings
 APP="VibeRecipe"
