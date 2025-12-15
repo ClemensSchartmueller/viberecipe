@@ -122,14 +122,37 @@ CT_HOSTNAME="${CT_HOSTNAME:-vibeRecipe}"
 
 # Get storage
 STORAGE_LIST=$(pvesm status -content rootdir | awk 'NR>1 {print $1}')
-if [[ $(echo "${STORAGE_LIST}" | wc -l) -eq 1 ]]; then
+STORAGE_COUNT=$(echo "${STORAGE_LIST}" | wc -l)
+
+if [[ "${STORAGE_COUNT}" -eq 1 ]]; then
   STORAGE="${STORAGE_LIST}"
-else
+elif [[ "${STORAGE_COUNT}" -gt 1 ]]; then
   echo -e "${INFO} Available storage:"
-  echo "${STORAGE_LIST}" | nl
-  read -p "Storage [local-lvm]: " STORAGE
-  STORAGE="${STORAGE:-local-lvm}"
+  echo "${STORAGE_LIST}" | nl -w2 -s") "
+  read -p "Enter storage name or number [local-lvm]: " STORAGE_INPUT
+  STORAGE_INPUT="${STORAGE_INPUT:-local-lvm}"
+  
+  # Check if input is a number
+  if [[ "${STORAGE_INPUT}" =~ ^[0-9]+$ ]]; then
+    STORAGE=$(echo "${STORAGE_LIST}" | sed -n "${STORAGE_INPUT}p")
+    if [[ -z "${STORAGE}" ]]; then
+      echo -e "${CROSS}${RD} Invalid storage selection${CL}"
+      exit 1
+    fi
+  else
+    STORAGE="${STORAGE_INPUT}"
+  fi
+else
+  # No storage found, use default
+  STORAGE="local-lvm"
 fi
+
+# Verify storage exists
+if ! pvesm status | grep -q "^${STORAGE}"; then
+  echo -e "${CROSS}${RD} Storage '${STORAGE}' not found${CL}"
+  exit 1
+fi
+
 echo -e "${CM} Using Storage: ${BL}${STORAGE}${CL}"
 
 # Resources
