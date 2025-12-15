@@ -82,14 +82,14 @@ VibeRecipe uses **localStorage** to manage your configuration securely in your b
 Build and run using Docker:
 
 ```bash
-cd deploy
+cd deploy/docker
 docker compose up -d
 ```
 
 Or build manually:
 
 ```bash
-docker build -f deploy/Dockerfile -t vibeRecipe .
+docker build -f deploy/docker/Dockerfile -t vibeRecipe .
 docker run -p 3000:3000 vibeRecipe
 ```
 
