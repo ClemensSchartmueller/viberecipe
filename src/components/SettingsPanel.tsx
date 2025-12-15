@@ -64,7 +64,7 @@ export function SettingsPanel() {
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
                                 Settings
                             </h2>
                             <button

@@ -281,8 +281,8 @@ export function RecipeCard({ recipe, onRetry, onReset, isRetrying = false }: Rec
                         onClick={handleSendToTandoor}
                         disabled={isSending}
                         className={cn(
-                            "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium transition-opacity",
-                            isSending ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"
+                            "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors",
+                            isSending ? "opacity-50 cursor-not-allowed" : ""
                         )}
                     >
                         {isSending ? (

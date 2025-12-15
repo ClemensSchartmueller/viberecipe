@@ -4,6 +4,8 @@
 
 VibeRecipe is a modern, AI-powered recipe extractor built with **Next.js**. It takes unstructured recipe content—whether it's a messy URL, a block of text, or a photo of a cookbook page—and converts it into a clean, structured format using **Google Gemini**. It also supports direct integration with **Tandoor**, allowing you to import extracted recipes directly into your self-hosted cookbook.
 
+![VibeRecipe Magic Paste Input](/assets/screenshot-main.png)
+
 ## Features
 
 - **Magic Paste Input**:

@@ -120,7 +120,7 @@ export function MagicPasteInput({ onSubmit, isLoading = false }: MagicPasteInput
                 onDrop={handleDrop}
             >
                 {/* Glow Effect */}
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
 
                 <div className="relative p-6 flex flex-col gap-4">
                     {pastedImage ? (

@@ -180,7 +180,7 @@ export default function Home() {
       <div className="w-full max-w-3xl flex flex-col gap-12 pt-12 md:pt-20 pb-20">
         {/* Hero Header */}
         <header className="text-center space-y-4 animate-in fade-in slide-in-from-top-10 duration-700">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent transform hover:scale-105 transition-transform cursor-default">
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-neutral-900 dark:text-white transform hover:scale-105 transition-transform cursor-default">
             VibeRecipe
           </h1>
           <p className="text-xl md:text-2xl text-neutral-500 dark:text-neutral-400 font-light">
