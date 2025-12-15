@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <!-- 
+     Concept: Cognitive Bowl on a white circular background.
+     Background: White Circle r=256
+     Icon: Scaled down to 80% to allow for white padding.
+  -->
+  
+  <!-- Background -->
+  <circle cx="256" cy="256" r="256" fill="white" />
+
+  <!-- Icon Group - Centered and Scaled 0.8 -->
+  <!-- Original Center 256,256. 
+       Scale 0.8. 
+       Translate needed to keep centered: 
+       New Center = 256 * 0.8 + T = 256 => T = 256 * 0.2 = 51.2
+       Plus the original vertical shift of +15 we had. 15 * 0.8 = 12.
+  -->
+  <g transform="translate(51.2, 63.2) scale(0.8)">
+      <!-- Bowl Base - Solid Black Bottom Semi-Circle -->
+      <!-- Arc from angle 0 to 180 (roughly) -->
+      <path d="M50 240 A 210 210 0 0 0 462 240 H 50 Z" fill="#171717"/>
+
+      <!-- Cognitive Brain Network - Top Semi-Circle -->
+      <g stroke="#171717" stroke-width="14" stroke-linecap="round" fill="#171717">
+         <!-- Outer Ring of Nodes (Following the circle) -->
+         <circle cx="256" cy="46" r="14" /> <!-- Top -->
+         
+         <circle cx="120" cy="110" r="14" /> <!-- Top Left -->
+         <circle cx="392" cy="110" r="14" /> <!-- Top Right -->
+         
+         <circle cx="60" cy="220" r="14" /> <!-- Mid Left (near bowl rim) -->
+         <circle cx="452" cy="220" r="14" /> <!-- Mid Right (near bowl rim) -->
+
+         <!-- Inner Nodes (The Brain Core) -->
+         <circle cx="256" cy="140" r="14" /> <!-- Center Top -->
+         <circle cx="180" cy="220" r="14" /> <!-- Center Left -->
+         <circle cx="332" cy="220" r="14" /> <!-- Center Right -->
+
+         <!-- Connections - Outer Skeleton -->
+         <path d="M256 46 A 210 210 0 0 0 120 110" fill="none" />
+         <path d="M256 46 A 210 210 0 0 1 392 110" fill="none" />
+         <path d="M120 110 A 210 210 0 0 0 60 220" fill="none" />
+         <path d="M392 110 A 210 210 0 0 1 452 220" fill="none" />
+         
+         <!-- Connections - Triangular Web -->
+         <line x1="256" y1="46" x2="256" y2="140" stroke-width="12" />
+         
+         <line x1="120" y1="110" x2="256" y2="140" stroke-width="12" />
+         <line x1="392" y1="110" x2="256" y2="140" stroke-width="12" />
+         
+         <line x1="120" y1="110" x2="180" y2="220" stroke-width="12" />
+         <line x1="392" y1="110" x2="332" y2="220" stroke-width="12" />
+         
+         <line x1="256" y1="140" x2="180" y2="220" stroke-width="12" />
+         <line x1="256" y1="140" x2="332" y2="220" stroke-width="12" />
+         
+         <line x1="60" y1="220" x2="180" y2="220" stroke-width="12" />
+         <line x1="452" y1="220" x2="332" y2="220" stroke-width="12" />
+         <line x1="180" y1="220" x2="332" y2="220" stroke-width="12" />
+      </g>
+  </g>
+</svg>

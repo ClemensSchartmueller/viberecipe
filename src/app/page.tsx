@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import { MagicPasteInput } from "@/components/MagicPasteInput";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { RecipeCard } from "@/components/RecipeCard";
@@ -49,6 +50,8 @@ export default function Home() {
       await handleTandoorImport(content);
       return;
     }
+
+
 
     // Default: Gemini Extraction
     await handleGeminiExtraction(content);
@@ -179,8 +182,17 @@ export default function Home() {
 
       <div className="w-full max-w-3xl flex flex-col gap-12 pt-12 md:pt-20 pb-20">
         {/* Hero Header */}
-        <header className="text-center space-y-4 animate-in fade-in slide-in-from-top-10 duration-700">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-neutral-900 dark:text-white transform hover:scale-105 transition-transform cursor-default">
+        <header className="text-center space-y-4 animate-in fade-in slide-in-from-top-10 duration-700 flex flex-col items-center">
+          <div className="relative w-24 h-24 md:w-32 md:h-32 mb-2 transform hover:scale-105 transition-transform duration-500">
+            <Image
+              src="/logo.svg"
+              alt="VibeRecipe Logo"
+              fill
+              className="object-contain dark:invert"
+              priority
+            />
+          </div>
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-neutral-900 dark:text-white cursor-default">
             VibeRecipe
           </h1>
           <p className="text-xl md:text-2xl text-neutral-500 dark:text-neutral-400 font-light">
