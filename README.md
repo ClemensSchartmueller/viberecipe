@@ -75,6 +75,46 @@ VibeRecipe uses **localStorage** to manage your configuration securely in your b
     - If configured, click the "Import to Tandoor" button on the recipe card to save it to your collection.
     - For supported sites, you can also check "Use Tandoor Import" before extracting to let Tandoor handle the parsing directly.
 
+## Deployment
+
+### Docker
+
+Build and run using Docker:
+
+```bash
+docker compose up -d
+```
+
+Or build manually:
+
+```bash
+docker build -t vibeRecipe .
+docker run -p 3000:3000 vibeRecipe
+```
+
+### Proxmox LXC
+
+One-command installation for Proxmox VE users (requires Proxmox VE 8.0+):
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/YOURUSER/recipeextractor/main/proxmox/ct/vibeRecipe.sh)"
+```
+
+> **Note:** Replace `YOURUSER` with the actual GitHub username/organization before using.
+
+This creates a lightweight Debian 12 LXC container with VibeRecipe pre-installed and configured with nginx.
+
+**Default Resources:**
+- CPU: 2 cores
+- RAM: 1024 MB  
+- Disk: 4 GB
+
+**Updating:**
+SSH into the container and run:
+```bash
+update
+```
+
 ## Development
 
 ### Tech Stack

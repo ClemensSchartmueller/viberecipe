@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+# VibeRecipe LXC Helper Functions
+# Simplified version based on community-scripts/ProxmoxVE patterns
+# Source: https://github.com/community-scripts/ProxmoxVE
+
+# =============================================================================
+# Color Variables
+# =============================================================================
+RD="\033[01;31m"
+YW="\033[33m"
+GN="\033[1;32m"
+CL="\033[m"
+BL="\033[36m"
+BOLD="\033[1m"
+CM="${GN}✓${CL}"
+CROSS="${RD}✗${CL}"
+INFO="${YW}ℹ${CL}"
+
+# Suppress output unless VERBOSE is set
+STD=">/dev/null 2>&1"
+if [[ "${VERBOSE:-}" == "yes" ]]; then
+  STD=""
+fi
+
+# =============================================================================
+# Message Functions
+# =============================================================================
+msg_info() {
+  local msg="$1"
+  echo -e "${INFO} ${YW}${msg}...${CL}"
+}
+
+msg_ok() {
+  local msg="$1"
+  echo -e "${CM} ${GN}${msg}${CL}"
+}
+
+msg_error() {
+  local msg="$1"
+  echo -e "${CROSS} ${RD}${msg}${CL}"
+}
+
+# =============================================================================
+# Container Setup Functions
+# =============================================================================
+setting_up_container() {
+  msg_info "Setting up Container OS"
+  
+  # Wait for network
+  local retries=10
+  for ((i = retries; i > 0; i--)); do
+    if [[ "$(hostname -I)" != "" ]]; then
+      break
+    fi
+    echo -e "${CROSS}${RD} Waiting for network...${CL}"
+    sleep 2
+  done
+  
+  if [[ "$(hostname -I)" == "" ]]; then
+    msg_error "No network after $retries retries"
+    exit 1
+  fi
+  
+  msg_ok "Set up Container OS"
+  msg_ok "Network Connected: ${BL}$(hostname -I | awk '{print $1}')${CL}"
+}
+
+network_check() {
+  msg_info "Checking network connectivity"
+  
+  # Check IPv4 connectivity
+  if ping -c 1 -W 2 1.1.1.1 &>/dev/null || ping -c 1 -W 2 8.8.8.8 &>/dev/null; then
+    msg_ok "IPv4 Internet Connected"
+  else
+    msg_error "IPv4 Internet Not Connected"
+    read -r -p "Continue anyway? <y/N> " prompt
+    if [[ ! "${prompt,,}" =~ ^(y|yes)$ ]]; then
+      exit 1
+    fi
+  fi
+  
+  # Check DNS resolution for GitHub
+  if getent hosts github.com &>/dev/null; then
+    msg_ok "DNS resolution working"
+  else
+    msg_error "Cannot resolve github.com"
+    exit 1
+  fi
+}
+
+update_os() {
+  msg_info "Updating Container OS"
+  eval apt-get update $STD
+  eval apt-get -y dist-upgrade $STD
+  msg_ok "Updated Container OS"
+}
+
+# =============================================================================
+# Node.js Setup
+# =============================================================================
+setup_nodejs() {
+  local NODE_VERSION="${NODE_VERSION:-20}"
+  
+  msg_info "Installing Node.js ${NODE_VERSION}"
+  
+  # Install dependencies
+  eval apt-get install -y ca-certificates curl gnupg $STD
+  
+  # Add NodeSource repository
+  mkdir -p /etc/apt/keyrings
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_VERSION}.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+  
+  # Install Node.js
+  eval apt-get update $STD
+  eval apt-get install -y nodejs $STD
+  
+  msg_ok "Installed Node.js $(node --version)"
+}
+
+# =============================================================================
+# Nginx Setup
+# =============================================================================
+setup_nginx() {
+  local APP_PORT="${APP_PORT:-3000}"
+  local NGINX_PORT="${NGINX_PORT:-80}"
+  
+  msg_info "Installing and configuring Nginx"
+  eval apt-get install -y nginx $STD
+  
+  cat <<EOF >/etc/nginx/sites-available/vibeRecipe
+server {
+    listen ${NGINX_PORT};
+    server_name _;
+    
+    client_max_body_size 50M;
+    
+    location / {
+        proxy_pass http://127.0.0.1:${APP_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+    }
+}
+EOF
+
+  # Enable site
+  rm -f /etc/nginx/sites-enabled/default
+  ln -sf /etc/nginx/sites-available/vibeRecipe /etc/nginx/sites-enabled/
+  
+  eval systemctl reload nginx $STD
+  msg_ok "Configured Nginx (port ${NGINX_PORT} → ${APP_PORT})"
+}
+
+# =============================================================================
+# Service Helpers
+# =============================================================================
+create_service() {
+  local SERVICE_NAME="$1"
+  local SERVICE_DESC="$2"
+  local WORKING_DIR="$3"
+  local EXEC_CMD="$4"
+  
+  msg_info "Creating systemd service: ${SERVICE_NAME}"
+  
+  cat <<EOF >/etc/systemd/system/${SERVICE_NAME}.service
+[Unit]
+Description=${SERVICE_DESC}
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+WorkingDirectory=${WORKING_DIR}
+ExecStart=${EXEC_CMD}
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=0.0.0.0
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  systemctl daemon-reload
+  eval systemctl enable --now ${SERVICE_NAME} $STD
+  msg_ok "Created and started ${SERVICE_NAME} service"
+}
+
+# =============================================================================
+# MOTD and SSH
+# =============================================================================
+motd_ssh() {
+  local APP_NAME="${APP_NAME:-VibeRecipe}"
+  
+  # Create login banner
+  cat <<EOF >/etc/profile.d/00_lxc-details.sh
+echo ""
+echo -e "${BOLD}${APP_NAME} LXC Container${CL}"
+echo -e "  ${YW}IP Address:${CL} ${GN}\$(hostname -I | awk '{print \$1}')${CL}"
+echo -e "  ${YW}Access URL:${CL} ${GN}http://\$(hostname -I | awk '{print \$1}')${CL}"
+echo ""
+EOF
+
+  chmod +x /etc/profile.d/00_lxc-details.sh
+  
+  # Disable default MOTD
+  chmod -x /etc/update-motd.d/* 2>/dev/null || true
+}
+
+# =============================================================================
+# Cleanup
+# =============================================================================
+cleanup_lxc() {
+  msg_info "Cleaning up"
+  eval apt-get autoremove -y $STD
+  eval apt-get autoclean -y $STD
+  msg_ok "Cleaned up"
+}
