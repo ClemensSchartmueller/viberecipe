@@ -103,6 +103,10 @@ git pull
 npm ci
 npm run build
 
+# Copy static assets for standalone deployment
+cp -r /opt/vibeRecipe/public /opt/vibeRecipe/.next/standalone/
+cp -r /opt/vibeRecipe/.next/static /opt/vibeRecipe/.next/standalone/.next/
+
 # Restart service
 systemctl start vibeRecipe
 
