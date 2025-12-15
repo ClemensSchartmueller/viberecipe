@@ -136,3 +136,8 @@ update
   - `api/tandoor`: Proxy endpoints for Tandoor API.
 - `src/components`: React components (RecipeCard, MagicPasteInput, etc.).
 - `src/lib`: Shared utilities, types, and constants.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
