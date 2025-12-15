@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, UploadCloud, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Copy, UploadCloud, Check, Loader2, AlertCircle, RotateCcw, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { STORAGE_KEYS, API_ROUTES } from '@/lib/constants';
@@ -12,6 +12,12 @@ import type { Recipe, RecipeIngredient, RecipeInstruction } from '@/types/recipe
 interface RecipeCardProps {
     /** Recipe data to display */
     recipe: Recipe;
+    /** Callback to retry extraction with the same input */
+    onRetry?: () => void;
+    /** Callback to reset and extract a new recipe */
+    onReset?: () => void;
+    /** Whether retry is in progress */
+    isRetrying?: boolean;
 }
 
 type ImageStatus = 'loading' | 'loaded' | 'error';
@@ -58,7 +64,7 @@ function getTandoorSettings(): { url: string; token: string } | null {
 /**
  * Displays an extracted recipe with options to copy or send to Tandoor.
  */
-export function RecipeCard({ recipe }: RecipeCardProps) {
+export function RecipeCard({ recipe, onRetry, onReset, isRetrying = false }: RecipeCardProps) {
     const [copied, setCopied] = useState(false);
     const [imageStatus, setImageStatus] = useState<ImageStatus>('loading');
     const [isSending, setIsSending] = useState(false);
@@ -230,6 +236,40 @@ export function RecipeCard({ recipe }: RecipeCardProps) {
 
                 {/* Action Buttons */}
                 <div className="pt-8 border-t border-neutral-200 dark:border-neutral-800 flex flex-col md:flex-row gap-4">
+                    {onRetry && (
+                        <button
+                            onClick={onRetry}
+                            disabled={isRetrying}
+                            className={cn(
+                                "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 font-medium transition-colors",
+                                isRetrying
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : "hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                            )}
+                        >
+                            {isRetrying ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <RotateCcw className="w-4 h-4" />
+                            )}
+                            {isRetrying ? "Retrying..." : "Retry"}
+                        </button>
+                    )}
+                    {onReset && (
+                        <button
+                            onClick={onReset}
+                            disabled={isRetrying}
+                            className={cn(
+                                "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 font-medium transition-colors",
+                                isRetrying
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : "hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                            )}
+                        >
+                            <Plus className="w-4 h-4" />
+                            New Recipe
+                        </button>
+                    )}
                     <button
                         onClick={handleCopy}
                         className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-neutral-200 dark:border-neutral-700 font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"

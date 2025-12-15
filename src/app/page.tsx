@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { MagicPasteInput } from "@/components/MagicPasteInput";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { RecipeCard } from "@/components/RecipeCard";
@@ -15,12 +15,21 @@ interface ExtractOptions {
 }
 
 /**
+ * Stored input for retry functionality.
+ */
+interface LastInput {
+  content: string | File;
+  options?: ExtractOptions;
+}
+
+/**
  * Main page component for VibeRecipe.
  * Handles recipe extraction from various sources and displays results.
  */
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const lastInputRef = useRef<LastInput | null>(null);
 
   /**
    * Handles content submission for extraction or import.
@@ -28,7 +37,10 @@ export default function Home() {
    * @param content - URL, text, or File to extract from
    * @param options - Extraction options (e.g., useTandoorImport)
    */
-  const handleExtract = async (content: string | File, options?: ExtractOptions) => {
+  const handleExtract = useCallback(async (content: string | File, options?: ExtractOptions) => {
+    // Store input for potential retry
+    lastInputRef.current = { content, options };
+
     setIsLoading(true);
     setRecipe(null);
 
@@ -40,7 +52,7 @@ export default function Home() {
 
     // Default: Gemini Extraction
     await handleGeminiExtraction(content);
-  };
+  }, []);
 
   /**
    * Handles direct import to Tandoor using their native parser.
@@ -145,9 +157,21 @@ export default function Home() {
   };
 
   /**
+   * Retries extraction with the last input.
+   */
+  const handleRetry = () => {
+    if (lastInputRef.current) {
+      handleExtract(lastInputRef.current.content, lastInputRef.current.options);
+    }
+  };
+
+  /**
    * Resets state to extract another recipe.
    */
-  const handleReset = () => setRecipe(null);
+  const handleReset = () => {
+    setRecipe(null);
+    lastInputRef.current = null;
+  };
 
   return (
     <main className="flex min-h-screen flex-col items-center p-4 md:p-8 bg-neutral-50 dark:bg-black text-neutral-900 dark:text-neutral-100 font-sans">
@@ -172,17 +196,13 @@ export default function Home() {
             </div>
           )}
 
-          {recipe && <RecipeCard recipe={recipe} />}
-
           {recipe && (
-            <div className="text-center">
-              <button
-                onClick={handleReset}
-                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 text-sm transition-colors"
-              >
-                Extract another recipe
-              </button>
-            </div>
+            <RecipeCard
+              recipe={recipe}
+              onRetry={handleRetry}
+              onReset={handleReset}
+              isRetrying={isLoading}
+            />
           )}
         </section>
       </div>

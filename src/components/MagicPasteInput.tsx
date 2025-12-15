@@ -102,7 +102,7 @@ export function MagicPasteInput({ onSubmit, isLoading = false }: MagicPasteInput
 
     const hasContent = inputVal.trim() || pastedImage;
     const isUrl = inputVal.trim().startsWith('http');
-    const buttonLabel = isTandoorImport ? 'Import' : 'Extract';
+    const buttonLabel = isUrl && isTandoorImport ? 'Import' : 'Extract';
 
     return (
         <div className="w-full max-w-2xl mx-auto">

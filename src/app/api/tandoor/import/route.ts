@@ -59,6 +59,19 @@ export async function POST(req: Request): Promise<NextResponse> {
         }
 
         const recipeJson = parseResult.data.recipe_json;
+
+        // Ensure we have a name - use URL-derived name as fallback
+        if (!recipeJson.name) {
+            // Try to extract a name from the URL
+            const urlPath = new URL(url).pathname;
+            const pathSegments = urlPath.split('/').filter(Boolean);
+            const lastSegment = pathSegments[pathSegments.length - 1] || '';
+            recipeJson.name = lastSegment
+                .replace(/[-_]/g, ' ')
+                .replace(/\b\w/g, c => c.toUpperCase())
+                || 'Imported Recipe';
+        }
+
         logApi(LOG_PREFIX, `Parsed successfully: "${recipeJson.name}"`);
 
         // Refine steps if needed (split single giant steps)
