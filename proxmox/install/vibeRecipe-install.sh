@@ -8,11 +8,18 @@
 # =============================================================================
 # Configuration
 # =============================================================================
-# IMPORTANT: Update this URL to point to your repository
 REPO_URL="https://github.com/ClemensSchartmueller/viberecipe.git"
 REPO_RAW="https://raw.githubusercontent.com/ClemensSchartmueller/viberecipe/refs/heads/main"
 APP_DIR="/opt/vibeRecipe"
 APP_PORT="3000"
+
+# =============================================================================
+# Bootstrap - Install curl first (required to fetch functions)
+# =============================================================================
+echo "Bootstrapping installation..."
+apt-get update -qq
+apt-get install -y -qq curl ca-certificates > /dev/null 2>&1
+echo "Bootstrap complete."
 
 # =============================================================================
 # Source Functions
@@ -32,10 +39,9 @@ setting_up_container
 network_check
 update_os
 
-# Install dependencies
+# Install remaining dependencies
 msg_info "Installing Dependencies"
 apt-get install -y \
-  curl \
   git \
   build-essential >/dev/null 2>&1
 msg_ok "Installed Dependencies"
