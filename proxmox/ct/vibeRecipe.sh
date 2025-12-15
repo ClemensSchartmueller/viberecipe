@@ -120,40 +120,72 @@ echo -e "${CM} Using Container ID: ${BL}${CT_ID}${CL}"
 read -p "Hostname [vibeRecipe]: " CT_HOSTNAME
 CT_HOSTNAME="${CT_HOSTNAME:-vibeRecipe}"
 
-# Get storage
-STORAGE_LIST=$(pvesm status -content rootdir | awk 'NR>1 {print $1}')
-STORAGE_COUNT=$(echo "${STORAGE_LIST}" | wc -l)
+# Get root password
+echo -e "${INFO} Set root password for SSH access"
+while true; do
+  read -s -p "Root Password: " CT_PASSWORD
+  echo
+  read -s -p "Confirm Password: " CT_PASSWORD_CONFIRM
+  echo
+  if [[ "${CT_PASSWORD}" == "${CT_PASSWORD_CONFIRM}" ]]; then
+    if [[ -n "${CT_PASSWORD}" ]]; then
+      break
+    else
+      echo -e "${CROSS}${RD} Password cannot be empty${CL}"
+    fi
+  else
+    echo -e "${CROSS}${RD} Passwords do not match, try again${CL}"
+  fi
+done
+echo -e "${CM} Password set"
 
-if [[ "${STORAGE_COUNT}" -eq 1 ]]; then
-  STORAGE="${STORAGE_LIST}"
-elif [[ "${STORAGE_COUNT}" -gt 1 ]]; then
+# Get storage
+mapfile -t STORAGE_ARRAY < <(pvesm status -content rootdir | awk 'NR>1 {print $1}')
+STORAGE_COUNT=${#STORAGE_ARRAY[@]}
+
+if [[ "${STORAGE_COUNT}" -eq 0 ]]; then
+  echo -e "${CROSS}${RD} No storage found with rootdir content type${CL}"
+  exit 1
+elif [[ "${STORAGE_COUNT}" -eq 1 ]]; then
+  STORAGE="${STORAGE_ARRAY[0]}"
+  echo -e "${CM} Using only available storage: ${BL}${STORAGE}${CL}"
+else
   echo -e "${INFO} Available storage:"
-  echo "${STORAGE_LIST}" | nl -w2 -s") "
-  read -p "Enter storage name or number [local-lvm]: " STORAGE_INPUT
-  STORAGE_INPUT="${STORAGE_INPUT:-local-lvm}"
+  for i in "${!STORAGE_ARRAY[@]}"; do
+    echo "  $((i+1))) ${STORAGE_ARRAY[i]}"
+  done
+  
+  # Default to first storage
+  DEFAULT_STORAGE="${STORAGE_ARRAY[0]}"
+  read -p "Enter storage number or name [${DEFAULT_STORAGE}]: " STORAGE_INPUT
+  STORAGE_INPUT="${STORAGE_INPUT:-1}"
   
   # Check if input is a number
   if [[ "${STORAGE_INPUT}" =~ ^[0-9]+$ ]]; then
-    STORAGE=$(echo "${STORAGE_LIST}" | sed -n "${STORAGE_INPUT}p")
-    if [[ -z "${STORAGE}" ]]; then
-      echo -e "${CROSS}${RD} Invalid storage selection${CL}"
+    INDEX=$((STORAGE_INPUT - 1))
+    if [[ "${INDEX}" -ge 0 ]] && [[ "${INDEX}" -lt "${STORAGE_COUNT}" ]]; then
+      STORAGE="${STORAGE_ARRAY[INDEX]}"
+    else
+      echo -e "${CROSS}${RD} Invalid selection: ${STORAGE_INPUT}. Please enter 1-${STORAGE_COUNT}${CL}"
       exit 1
     fi
   else
-    STORAGE="${STORAGE_INPUT}"
+    # User entered a name, verify it exists
+    FOUND=false
+    for s in "${STORAGE_ARRAY[@]}"; do
+      if [[ "$s" == "${STORAGE_INPUT}" ]]; then
+        STORAGE="${STORAGE_INPUT}"
+        FOUND=true
+        break
+      fi
+    done
+    if [[ "${FOUND}" == false ]]; then
+      echo -e "${CROSS}${RD} Storage '${STORAGE_INPUT}' not found${CL}"
+      exit 1
+    fi
   fi
-else
-  # No storage found, use default
-  STORAGE="local-lvm"
+  echo -e "${CM} Using Storage: ${BL}${STORAGE}${CL}"
 fi
-
-# Verify storage exists
-if ! pvesm status | grep -q "^${STORAGE}"; then
-  echo -e "${CROSS}${RD} Storage '${STORAGE}' not found${CL}"
-  exit 1
-fi
-
-echo -e "${CM} Using Storage: ${BL}${STORAGE}${CL}"
 
 # Resources
 read -p "CPU cores [${var_cpu}]: " CT_CPU
@@ -229,6 +261,11 @@ fi
 # Wait for container to fully start and get network
 echo -e "${INFO} Waiting for container to initialize..."
 sleep 10
+
+# Set root password
+msg_info "Setting root password"
+pct exec "${CT_ID}" -- bash -c "echo 'root:${CT_PASSWORD}' | chpasswd"
+msg_ok "Root password configured"
 
 # Verify container is running
 if [[ "$(pct status ${CT_ID} 2>/dev/null | awk '{print $2}')" != "running" ]]; then
