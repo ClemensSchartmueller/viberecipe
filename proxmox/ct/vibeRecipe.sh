@@ -170,7 +170,7 @@ fi
 # =============================================================================
 msg_info "Creating LXC container ${CT_ID}"
 
-pct create "${CT_ID}" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" \
+if ! pct create "${CT_ID}" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" \
   --hostname "${CT_HOSTNAME}" \
   --rootfs "${STORAGE}:${CT_DISK}" \
   --cores "${CT_CPU}" \
@@ -179,7 +179,17 @@ pct create "${CT_ID}" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" \
   --unprivileged "${var_unprivileged}" \
   --features nesting=1 \
   --onboot 1 \
-  --start 0
+  --start 0; then
+  echo -e "${CROSS}${RD} Failed to create container${CL}"
+  exit 1
+fi
+
+# Verify container was created
+sleep 2
+if ! pct status "${CT_ID}" &>/dev/null; then
+  echo -e "${CROSS}${RD} Container ${CT_ID} was not created properly${CL}"
+  exit 1
+fi
 
 msg_ok "Created container ${CT_ID}"
 
@@ -187,8 +197,21 @@ msg_ok "Created container ${CT_ID}"
 # Start and Install
 # =============================================================================
 msg_info "Starting container"
-pct start "${CT_ID}"
-sleep 5
+
+if ! pct start "${CT_ID}"; then
+  echo -e "${CROSS}${RD} Failed to start container${CL}"
+  exit 1
+fi
+
+# Wait for container to fully start and get network
+echo -e "${INFO} Waiting for container to initialize..."
+sleep 10
+
+# Verify container is running
+if [[ "$(pct status ${CT_ID} 2>/dev/null | awk '{print $2}')" != "running" ]]; then
+  echo -e "${CROSS}${RD} Container failed to start${CL}"
+  exit 1
+fi
 msg_ok "Started container"
 
 msg_info "Running installation script (this may take several minutes)"
@@ -197,7 +220,9 @@ pct exec "${CT_ID}" -- bash -c "$(curl -fsSL ${REPO_RAW}/proxmox/install/vibeRec
 # =============================================================================
 # Complete
 # =============================================================================
-CT_IP=$(pct exec "${CT_ID}" -- hostname -I | awk '{print $1}')
+# Wait a moment for network to settle
+sleep 2
+CT_IP=$(pct exec "${CT_ID}" -- hostname -I 2>/dev/null | awk '{print $1}')
 
 echo ""
 echo -e "${GN}═══════════════════════════════════════════════════════════════${CL}"
