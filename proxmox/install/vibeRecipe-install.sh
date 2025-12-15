@@ -9,8 +9,8 @@
 # Configuration
 # =============================================================================
 # IMPORTANT: Update this URL to point to your repository
-REPO_URL="https://github.com/YOURUSER/viberecipe.git"
-REPO_RAW="https://raw.githubusercontent.com/YOURUSER/viberecipe/refs/heads/main"
+REPO_URL="https://github.com/ClemensSchartmueller/viberecipe.git"
+REPO_RAW="https://raw.githubusercontent.com/ClemensSchartmueller/viberecipe/refs/heads/main"
 APP_DIR="/opt/vibeRecipe"
 APP_PORT="3000"
 
