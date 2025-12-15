@@ -172,7 +172,6 @@ msg_info "Creating LXC container ${CT_ID}"
 
 pct create "${CT_ID}" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" \
   --hostname "${CT_HOSTNAME}" \
-  --storage "${STORAGE}" \
   --rootfs "${STORAGE}:${CT_DISK}" \
   --cores "${CT_CPU}" \
   --memory "${CT_RAM}" \
@@ -180,7 +179,7 @@ pct create "${CT_ID}" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE}" \
   --unprivileged "${var_unprivileged}" \
   --features nesting=1 \
   --onboot 1 \
-  --start 0 >/dev/null 2>&1
+  --start 0
 
 msg_ok "Created container ${CT_ID}"
 
